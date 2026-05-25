@@ -14,6 +14,7 @@ A real-time weather data streaming pipeline that fetches live weather data from 
 - [Running the Pipeline](#running-the-pipeline)
 - [Verifying the Pipeline](#verifying-the-pipeline)
 - [Key Code & Architecture Decisions](#key-code--architecture-decisions)
+- [Visuals](#visuals)
 - [Troubleshooting](#troubleshooting)
 - [Why use Kafka and Cassandra](#why-use-kafka-and-cassandra)
 - [Quick Reference Cheat Sheet](#quick-reference-cheat-sheet)
@@ -410,6 +411,18 @@ def fetch_weather():
         print(f"[Producer] Failed to fetch weather data: {e}")
         return None   # Loop continues; next fetch attempted in 10s
 ```
+
+---
+
+## Visuals
+
+### Desktop container view
+
+![Containers](images/containers.png)
+
+### Consumer data stream
+
+![Data stream](images/consumer_stream.png)
 
 ---
 
