@@ -1,4 +1,4 @@
-# Weather Streaming Pipeline
+# Weather Streaming Pipeline with Apache Kafka # Cassandra
 
 A real-time weather data streaming pipeline that fetches live weather data from the OpenWeatherMap API, streams it through Apache Kafka, and persists it to Apache Cassandra — all containerised with Docker Compose.
 
