@@ -1,0 +1,3 @@
+# Dockerfile for the producer service
+kafka-python
+requests

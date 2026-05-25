@@ -1,0 +1,82 @@
+# Docker Compose configuration for the Weather Stream Pipeline.
+# This setup includes:
+# - Zookeeper: Required for Kafka coordination.
+# - Kafka: Message broker for streaming data.
+# - Cassandra: NoSQL database for storing weather data.
+# - Producer: Custom service to fetch weather data and send to Kafka.
+# - Consumer: Custom service to read from Kafka and write to Cassandra.
+# Note: Ensure you have a .env file with the necessary environment variables (e.g., OPENWEATHER_API_KEY) before running this setup.
+version: "3.8"
+
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "2181"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    depends_on:
+      zookeeper:
+        condition: service_healthy # Wait for zookeeper to be truly ready
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0 # Faster consumer group startup
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "kafka-broker-api-versions --bootstrap-server localhost:9092 && kafka-topics --bootstrap-server localhost:9092 --list",
+        ]
+      interval: 15s
+      timeout: 15s
+      retries: 10
+      start_period: 45s # Give Kafka more time before first check
+
+  cassandra:
+    image: cassandra:4.1
+    container_name: cassandra
+    ports:
+      - "9042:9042"
+    healthcheck:
+      test: ["CMD", "cqlsh", "-e", "describe keyspaces"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s # Cassandra is slow to start
+
+  producer:
+    build: ./producer
+    depends_on:
+      kafka:
+        condition: service_healthy
+    restart: on-failure # Only restart on crash, not on deliberate stop
+    environment:
+      OPENWEATHER_API_KEY: ${OPENWEATHER_API_KEY}
+
+  consumer:
+    build: ./consumer
+    depends_on:
+      kafka:
+        condition: service_healthy
+      cassandra:
+        condition: service_healthy # Don't start consumer until Cassandra is ready
+    restart: on-failure
